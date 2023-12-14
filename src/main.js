@@ -6,12 +6,17 @@
 let config = {
     type: Phaser.AUTO,
     physics: {
-        default: 'arcade'
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
     },
     width: 640,
     height: 480,
     backgroundColor: '#0000FF',
-    scene: [ Menu, Play, GameOver]
+    scene: [ Menu, Play, GameOver],
+    pixelArt: true
+
 }
 
 
