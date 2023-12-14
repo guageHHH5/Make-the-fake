@@ -6,7 +6,11 @@ class Play extends Phaser.Scene{
     preload(){
         this.load.image('ship', './assets/player.png');
         this.load.image('boolet', './assets/bullet.png');
+        this.load.image('eboolet', './assets/ebullet.png');
         this.load.image('enemy', './assets/enemy.png');
+        this.load.image('fH', './assets/heart-filled.png');
+        this.load.image('eH', './assets/heart-empty.png');
+        this.load.image('ufo', './assets/ufo.png');
     }
     create(){
         this.dead = false;
@@ -14,20 +18,47 @@ class Play extends Phaser.Scene{
         this.player.body.setCollideWorldBounds(true);
         this.PLAYER_VELOCITY = 350;
         
+        this.life = 4;
+        //console.log(this.life);
+
+        this.heart1 = this.physics.add.image(600, 50, 'fH').setOrigin(0.5);
+        this.heart2 = this.physics.add.image(583, 50, 'fH').setOrigin(0.5);   
+        this.heart3 = this.physics.add.image(566, 50, 'fH').setOrigin(0.5);
+        this.heart4 = this.physics.add.image(549, 50, 'fH').setOrigin(0.5);
+
         this.moveSpeed = 480;
 
         cursors = this.input.keyboard.createCursorKeys();
         
-        this.input.on('pointerdown', this.shoot, this);
+        this.input.keyboard.on('keydown-SPACE', this.shoot, this);
 
-        this.enemy1 = this.physics.add.sprite(150, 0, 'enemy').setOrigin(0.5);
+        //this.enemy1 = this.physics.add.sprite(150, 0, 'enemy').setOrigin(0.5);
+
+        this.enemies = this.add.group();
+        this.enemyBullet = this.add.group();
+
+        this.time.addEvent({
+            delay: 850,
+            callback: function() {
+                this.enemy = new Enemy(
+                    this,
+                    Phaser.Math.Between(0, game.config.width),
+                    0
+                );
+                this.enemies.add(this.enemy);
+            },
+            callbackScope: this,
+            loop: true
+        });
     }
 
     explode(player, enemy1){
-        this.dead = true;
+        //this.dead = true;
         //this.player.disableBody(true, true);
         //
-        player.scene.scene.start('endScene');
+        this.life--;
+        console.log(this.life);
+        //player.scene.scene.start('endScene');
     }
 
     shoot(){
@@ -40,7 +71,7 @@ class Play extends Phaser.Scene{
 
     destroyEnemy(){
         this.bullet.disableBody(true, true);
-        this.enemy1.disableBody(true, true)
+        this.enemies.disableBody(true, true)
     }
 
     update(){
@@ -67,14 +98,14 @@ class Play extends Phaser.Scene{
 
         this.player.body.velocity.normalize().scale(250);
 
-        this.enemy1.y += 3.2;
+        //this.enemy1.y += 3.2;
 
         //wrap
-        if(this.enemy1.y >= 480){
-            this.enemy1.y = 0;
-        }
+        // if(this.enemy1.y >= 480){
+        //     this.enemy1.y = 0;
+        // }
 
-        this.physics.overlap(this.player, this.enemy1,this.explode);
+        this.physics.overlap(this.player, this.enemies,this.explode);
     }
     
 }

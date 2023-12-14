@@ -3,19 +3,27 @@ class Enemy extends Phaser.GameObjects.Sprite{
         super(scene, x, y, texture);
         scene.add.existing(this);
         //this.points = pointValue;
-        this.moveSpeed = 550;
-    }
-    update(){
-        //move spaceship left
-        this.y = this.moveSpeed;
+        this.x = x;
+        this.y = y;
+        this.enemy = this.scene.physics.add.sprite(x, y, 'enemy');
+        this.enemy.body.velocity.y = Phaser.Math.Between(100, 250);
 
-        //wrap
-        if(this.y <= 0 - this.height){
-            this.y = game.config.height;
+        this.shoot = this.scene.time.addEvent({
+            delay: 850,
+            callback: function() {
+                this.bullet = this.scene.physics.add.image(this.enemy.x, this.enemy.y + 5, "eboolet").setScale(1.5);
+                this.bullet.body.velocity.y = 300;
+            },
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    onDestroy(){
+        if(this.shoot != undefined){
+            if(this.shoot){
+                this.shoot.remove(false);
+            }
         }
-    }
-
-    reset(){
-        this.x = game.config.height;
     }
 }
