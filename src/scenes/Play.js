@@ -2,55 +2,88 @@ class Play extends Phaser.Scene{
     constructor(){
         super('playScene');
     }
-
+    
     preload(){
-        this.load.image('ship', './assets/player.png');
+        this.load.spritesheet('ship', './assets/playerSprite.png',{
+            frameWidth: 27.5,
+            frameHeight: 26
+        });
+        this.load.bitmapFont('pixel', './assets/pixel.png', './assets/pixel.xml');
         this.load.image('boolet', './assets/bullet.png');
         this.load.image('eboolet', './assets/ebullet.png');
-        this.load.image('enemy', './assets/enemy.png');
+        this.load.image('sprEnemy', './assets/enemy.png');
         this.load.image('fH', './assets/heart-filled.png');
         this.load.image('eH', './assets/heart-empty.png');
-        this.load.image('ufo', './assets/ufo.png');
+        this.load.image('sprUfo', './assets/ufo.png');
         this.load.audio('pSh', 'assets/pSh.mp3');
         this.load.audio('eSh', 'assets/eSh.mp3');
         this.load.audio('eDie', 'assets/eDie.mp3');
+        this.load.audio('pDie', 'assets/pDie.mp3');
+        this.load.audio('bgm', 'assets/bgm.mp3');
+        this.load.spritesheet('sprExplosion', 'assets/spritesheets/sprExplosion.png', {
+            frameWidth: 32,
+            frameHeight: 32,
+        });
+        this.load.image('smoke', 'assets/whitePuff00.png' );
     }
     create(){
+        this.physics.world.drawDebug = false;
+        this.toggleDebug = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+
+        //add sound effects
+        let eHit = this.sound.add('eDie', {volume: 0.15});
         this.sfx = {
-            explosion: this.sound.add('eDie', {volume: 0.6}),
-            eBullet: this.sound.add('eSh'),
+            eBullet: this.sound.add('eSh', {volume: 0.25}),
             pBullet: this.sound.add('pSh')
         };
-
-        let pScore = 0;
-         
-        this.enemies = this.add.group();
-        //this.enemies = enemies;
-        this.enemyBullet = this.add.group();
-        let pBullet = this.add.group();
-
-        this.dead = false;
-        // this.player = new Player(
-        //     this, 
-        //     320, 
-        //     415,
-        //     'ship'
-        // );
-        this.player = this.physics.add.image(320, 415, 'ship').setOrigin(0.5);
-        this.player.body.setCollideWorldBounds(true);
-        this.PLAYER_VELOCITY = 350;
         
-        let health = 4;
+        let pHit = this.sound.add('pDie', {volume: 0.65});
+        
+        //initialize score
+        pScore = 0;
+        
+        //add music and play
+        this.music = this.sound.add('bgm');
+        this.music.play();
+        this.music.setLoop(true);
+
+        this.music.setVolume(0.45);
+        
+        //initialize game object groups
+        this.enemies = this.add.group();
+        this.enemyBullet = this.add.group();
+        this.pBullet = this.add.group();
+        
+        //initialize player
+        this.player = this.physics.add.sprite(320, 415, 'ship', 1).setOrigin(0.5);
+        this.player.body.setCollideWorldBounds(true);
+        
+        //create explosion animation
+        this.anims.create({
+            key: 'spriteExplode',
+            frames: this.anims.generateFrameNumbers('sprExplosion', {start: 0, end: 16}),
+            frameRate: 20,
+            repeat: -1
+        });
+
+        //initialize misc variables
+        var health = 4;
         this.health = health;
-        console.log(health);
         this.lifeGauge();
         let isPlayerHurt = false;
-        
-
+        let dead = false;
+        this.dead = dead;
         this.moveSpeed = 480;
 
+        //add score and life texts
+        let lifetext = this.add.bitmapText(520, 50, 'pixel', health).setScale(0.2).setOrigin(0.5);
+        let scoreText = this.add.bitmapText(160, 50, 'pixel', pScore).setScale(0.2).setOrigin(0.5);
+        this.score = this.add.bitmapText(50, 50, 'pixel', 'Score:').setScale(0.2).setOrigin(0.5);
+
+        //create keys
         cursors = this.input.keyboard.createCursorKeys();
         
+        //shoot
         this.input.keyboard.on('keydown-SPACE', function(){
             let bullet = new playerBullet(
                 this,
@@ -58,24 +91,10 @@ class Play extends Phaser.Scene{
                 this.player.y
             );
             this.sfx.pBullet.play();
-            pBullet.add(bullet);
-        //     this.physics.add.collider(bullet, enemies, function(){
-        //         if(enemies){
-        //             if(enemies.onDestroy !== undefined){
-        //                 enemies.onDestroy();
-        //             }
-    
-        //             enemies.destroy();
-        //             bullet.destroy();
-        //         }
-        //     }
-        // );
+            this.pBullet.add(bullet);
         }, this);
-
-        //this.enemy1 = this.physics.add.sprite(150, 0, 'enemy').setOrigin(0.5);
-
-       
-
+        
+        //create normal enemies
         this.time.addEvent({
             delay: 850,
             callback: function() {
@@ -91,10 +110,11 @@ class Play extends Phaser.Scene{
             loop: true
         });
 
+        //create UFO
         this.time.addEvent({
             delay: 5000,
             callback: function() {
-                let ufo = new UFO(
+                var ufo = new UFO(
                     this,
                     null,
                     100,
@@ -106,58 +126,89 @@ class Play extends Phaser.Scene{
             loop: true
         });
 
+        
+        //collider for hitting enemies
+        this.physics.add.collider(this.pBullet, this.enemies, function(bullet, enemy){
+            if(enemy){
+                if(enemy.onDestroy !== undefined){
+                    enemy.onDestroy();
+                }
+                eHit.play();
+                //this.onHit();
+                if(enemy.data.values.type == 'ufo'){
+                    pScore += 300;
+                } else {
+                    pScore += 100;
+                }
+    
+                
+                enemy.anims.play('spriteExplode');
+                
+                scoreText.setText(pScore);
+                
+                enemy.once('animationcomplete', ()=>{
+                    
+                    enemy.destroy();
+                    
+                });
+                
+                bullet.destroy();
+            }
+        }, null, this);
 
-
-        // this.physics.add.collider(pBullet, enemies, function(/*bullet, enemy*/){
-        //     if(enemies){
-        //         if(enemies.onDestroy() !== undefined){
-        //             enemies.onDestroy();
-        //         }
-
-        //         enemies.destroy(true);
-        //         pBullet.destroy(true);
-        //     }
-        // }, null, this);
-
-        this.physics.add.overlap(this.player, this.enemies,function(enemy){
-            //this.health = health;
+        //collider for enemies hitting the player
+        this.physics.add.overlap(this.player, this.enemies,function(player, enemy){
+            
             if(!isPlayerHurt){
                 health -= 1;
                 isPlayerHurt = true;
-                console.log(health);
+                pHit.play();
                 
-                this.time.delayedCall(1000, function() {
+                
+                this.time.delayedCall(950, function() {
                     isPlayerHurt = false;
                 }, null, this);
                 this.updatelifeGauge(health);
+                
+                if(health == 0){
+                    this.dead = true;
+                }
             }
-            enemy.destroy()
+            lifetext.setText(health);
+            enemy.setVisible(false);
+            
         },null, this);
+
+        //collider for enemy bullets hitting the player
+        this.physics.add.overlap(this.player, this.enemyBullet,function(player, bullet){
+            
+            if(!isPlayerHurt){
+                health -= 1;
+                isPlayerHurt = true;
+                
+                pHit.play();
+                this.time.delayedCall(500, function() {
+                    isPlayerHurt = false;
+                }, null, this);
+                this.updatelifeGauge(health);
+                
+                if(health == 0){
+                    this.dead = true;
+                }
+                lifetext.setText(health);
+            }
+            
+            
+
+            bullet.setVisible(false);
+        },null, this);
+
+        //another text
+        this.Ltext = this.add.bitmapText(475, 50, 'pixel', 'Life:').setScale(0.2).setOrigin(0.5);
         
     }
 
 
-    // explode(player, enemy1){
-    //     //this.dead = true;
-    //     //this.player.disableBody(true, true);
-    //     //
-    //     this.life--;
-    //     console.log(this.life);
-    //     //player.scene.scene.start('endScene');
-    // }
-
-    shoot(){
-        this.bullet = this.physics.add.image(this.player.x, this.player.y, "boolet").setScale(1.5);
-        this.bullet.setVelocityY(-600);
-        //this.physics.add.collider(this.bullet, this.enemy1, this.destroyEnemy(this.bullet, this.enemy1),null, this);
-        //this.physics.add.collider(this.bullet, this.enemy2, this.destroyEnemy(),null, this);
-        //this.physics.add.collider(this.bullet, this.enemy3, this.destroyEnemy(),null, this);
-    }
-
-    // destroyEnemy(){
-    //     this.bullet.disableBody(true, true);
-    //     this.enemies.disableBody(true, true)
-    // }
 
     lifeGauge(){
         this.heart1 = this.physics.add.image(600, 50, 'fH').setOrigin(0.5);
@@ -177,7 +228,6 @@ class Play extends Phaser.Scene{
             this.heart1.setTexture('eH');
             this.heart2.setTexture('eH');
             this.heart3.setTexture('eH');
-            //this.heart4.setTexture('eH');
         } else {
             this.heart1.setTexture('eH');
             this.heart2.setTexture('eH');
@@ -186,8 +236,16 @@ class Play extends Phaser.Scene{
         }
     }
 
+
     update(){
-        //this.player.update();
+        if(Phaser.Input.Keyboard.JustDown(this.toggleDebug)){
+            if(this.physics.world.drawDebug){
+                this.physics.world.drawDebug = false;
+                this.physics.world.debugGraphic.clear();
+            } else {
+                this.physics.world.drawDebug = true;
+            }
+        }
 
         if(cursors.left.isDown){
             this.player.setVelocityX(-250);
@@ -207,50 +265,59 @@ class Play extends Phaser.Scene{
         } else {
             this.player.setVelocityY(0);
         }
+        
+        
 
         this.player.body.velocity.normalize().scale(250);
-        //this.enemy1.body.velocity.y = 250;
 
-        //this.enemy1.y += 3.2;
+        for(var i = 0; i < this.enemies.getChildren().length; i++){
+            var enemy = this.enemies.getChildren()[i];
+            enemy.update();
 
-        //wrap
-        // if(this.enemy1.y >= 480){
-        //     this.enemy1.y = 0;
-        // }
+            if(enemy.x < -enemy.displayWidth || 
+                enemy.x > this.game.config.width + enemy.displayWidth || 
+                enemy.y < -enemy.displayHeight * 4 || 
+                enemy.y > this.game.config.height + enemy.displayHeight) {
+                    if(enemy){
+                        if(enemy.onDestroy != undefined){
+                            enemy.onDestroy();
+                        }
 
-        // if(this.enemies.x < -this.enemies.displayWidth || 
-        //     this.enemies.x > this.game.config.width + this.enemies.displayWidth || 
-        //     this.enemies.y < -this.enemies.displayHeight * 4 || 
-        //     this.enemies.y > this.game.config.height + this.enemies.displayHeight) {
-        //         if(this.enemies){
-        //             if(this.enemies.onDestroy != undefined){
-        //                 enemies.onDestroy();
-        //             }
-
-        //             this.enemies.destroy();
-        //         }
-        // }
-
+                        enemy.destroy();
+                    }
+            }
+        }
         for(var i = 0; i < this.enemyBullet.getChildren().length; i++){
-            this.bullet = this.enemyBullet.getChildren()[i];
-            this.bullet.update();
+            var bullet = this.enemyBullet.getChildren()[i];
+            bullet.update();
 
-            if(this.enemyBullet.x < -this.enemyBullet.displayWidth ||
-                this.enemyBullet.x > this.game.config.width + this.enemyBullet.displayWidth ||
-                this.enemyBullet.y < -this.enemyBullet.displayHeight * 4 ||
-                this.enemyBullet.y > this.game.config.height + this.enemyBullet.displayHeight) {
-                    if (this.bullet) {
-                        this.bullet.destroy();
+            if(bullet.x < -bullet.displayWidth ||
+                bullet.x > this.game.config.width + bullet.displayWidth ||
+                bullet.y < -bullet.displayHeight * 4 ||
+                bullet.y > this.game.config.height + bullet.displayHeight) {
+                    if (bullet) {
+                        bullet.destroy();
                     }
                 }
         }
+
+        for (var i = 0; i < this.pBullet.getChildren().length; i++) {
+            var bullet = this.pBullet.getChildren()[i];
+            bullet.update();
+            if (bullet.x < -bullet.displayWidth ||
+              bullet.x > this.game.config.width + bullet.displayWidth ||
+              bullet.y < -bullet.displayHeight * 4 ||
+              bullet.y > this.game.config.height + bullet.displayHeight) {
+              if (bullet) {
+                bullet.destroy();
+              }
+            }
+          }
         
-        
-        // this.enemies.children.iterate(function (enemy) {
-        //     console.log(enemy); // Output each enemy in the console
-        // });
-        
-        // console.log(this.enemies.getLength());
+        if(this.dead == true){
+            this.music.stop();
+            this.scene.start('endScene');
+        }
     }
     
 }
