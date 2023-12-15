@@ -17,11 +17,7 @@ class Menu extends Phaser.Scene{
 
 
         this.music = this.sound.add('menu');
-        if(this.music.isPaused){
-            this.music.resume();
-        } else {
-            this.music.play();
-        }
+        this.music.play();
         this.music.setLoop(true);
         
         this.add.bitmapText(game.config.width/2, game.config.height/2.5 - borderUISize - borderPadding,'pixel', 'Space Blaster').setScale(0.4).setOrigin(0.5);
